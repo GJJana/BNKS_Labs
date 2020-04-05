@@ -1,6 +1,5 @@
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Base64;
-import sun.nio.cs.UTF_8;
 
 
 import javax.crypto.BadPaddingException;
@@ -11,58 +10,53 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.Arrays;
 
-
-//FrameHeader e ist i za encrypted i za clear -> SourceMac DestinationMac
-//MIC 64 bites
 class EncryptedFrame{
     byte[]header;
-    byte[] data;
+    byte[]data;
     byte[]MIC;
     IvParameterSpec ivParameterSpec;
-
     public void setHeader(byte[] header) {
         this.header = header;
     }
-
     public void setData(byte[] data) {
         this.data = data;
     }
-
-    public void setMIC(byte[] MIC) {
-        this.MIC = MIC;
+    public void setMIC(byte[] mIC) {
+        MIC = mIC;
     }
-
-
-  public EncryptedFrame(byte[]header,byte[] data,byte[]MIC,IvParameterSpec iv){
-        this.header=header;
-        this.data=data;
-        this.MIC=MIC;
-        this.ivParameterSpec=iv;
-  }
+    public EncryptedFrame(byte[] header, byte[] data, byte[] mIC, IvParameterSpec ivParameterSpec) {
+        super();
+        this.header = header;
+        this.data = data;
+        MIC = mIC;
+        this.ivParameterSpec = ivParameterSpec;
+    }
 
     public void print() {
-        System.out.println(header.toString());
-        System.out.println("Payload: " + new String(Base64.encode(data)));
-        System.out.println("MIC: " + new String(Base64.encode(MIC)));
+        System.out.println(new String(Base64.encode(header)));
+        System.out.println("Payload: "+new String(Base64.encode(data)));
+        System.out.println("MIC: "+new String(Base64.encode(MIC)));
     }
-
 }
-class ClearTextFrame{
 
+class ClearTextFrame{
     byte[]header;
     byte[] data;
     byte[]MIC;
     byte[] IV=new byte[16];
     IvParameterSpec ivParameterSpec;
-
     public void setMIC(byte[] MIC) {
         this.MIC = MIC;
     }
-
+    public byte[] getHeader() {
+        return header;
+    }
+    public byte[] getData() {
+        return data;
+    }
     public ClearTextFrame(byte[] header,byte[] data)
     {
         this.header=header;
@@ -84,43 +78,15 @@ class ClearTextFrame{
         return new IvParameterSpec(IV);
     }
     public void print() {
-        System.out.println(header.toString());
-        System.out.println("Payload: " + new String(Base64.encode(data)));
+        System.out.println(new String (Base64.encode(header)));
+        System.out.println("Payload: "+new String(Base64.encode(data)));
+        System.out.println("MIC: "+new String(Base64.encode(MIC)));
 
     }
-
-
 }
 
-
-
-
-public class Provider_Example {
-
-    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, UnsupportedEncodingException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
-       // Го додава ова множество за користење
-        Security.addProvider(new BouncyCastleProvider());
-        byte[] sourceMAC=new String("30-29-30-40-44-70").getBytes("UTF-8");​
-        byte[] destinationMAC=new String("01-23-45-67-89-AB").getBytes("UTF-8");
-        String new_data="kusamainformaciakusamainformacia";
-        byte[] data=new_data.getBytes("UTF-8");//payload
-        String key="jirlmnydlkniklin";
-        ClearTextFrame plainText=new ClearTextFrame(sourceMAC,destinationMAC,data);
-        EncryptedFrame encryptedFrame=encryptFrame(plainText,key);
-        ClearTextFrame decryptedFrame=decryptFrame(encryptedFrame,key);
-        System.out.println("Before encryption:");
-        plainText.print();
-        System.out.println("After encryption");
-        encryptedFrame.print();
-        System.out.println("After decryption");
-        decryptedFrame.print();
-
-
-
-
-    }
-    //Enkripcija
-    public static  EncryptedFrame encryptFrame(ClearTextFrame frame, String myKey) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
+public class Provider_Example{
+    public static EncryptedFrame encryptFrame(ClearTextFrame frame, String myKey) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
         Cipher cipher = Cipher.getInstance("AES/CTR/PKCS5Padding");
         byte[] key = myKey.getBytes("UTF-8");
         MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -167,8 +133,6 @@ public class Provider_Example {
         //samo prvite 8bajti za MIC
         byte[] MIC = Arrays.copyOfRange(tmp, 0, 8);
         frame.setMIC(MIC);
-
-
         //enkripcija
         cipher=Cipher.getInstance("AES/CTR/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec,IVspec);
@@ -201,18 +165,30 @@ public class Provider_Example {
             System.arraycopy(frame.data,j,subArr,0,16);
             byte[] tmp1=cipher.doFinal(subArr);
             System.arraycopy(tmp1,0,data,j,16);
-
         }
         ClearTextFrame ct= new ClearTextFrame(frame.header,frame.data);
         ct.setMIC(MIC);
         return ct;
-
-
     }
 
-
-
-
-
+    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, UnsupportedEncodingException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, InvalidKeyException {
+        Security.addProvider(new BouncyCastleProvider());
+        String source="30-65-EC-6F-C4-58";
+        String destination="01-23-45-67-89-AB";
+        String new_data="kusamainformaciakusamainformacia";
+        byte[] sourceMAC = source.getBytes("UTF-8");
+        byte[] destinationMAC = destination.getBytes("UTF-8");
+        byte[] data = new_data.getBytes("UTF-8");
+        String key="jirlmnydlkniklin";
+        ClearTextFrame plainText=new ClearTextFrame(sourceMAC,destinationMAC,data);
+        EncryptedFrame encryptedFrame=encryptFrame(plainText,key);
+        ClearTextFrame decryptedFrame=decryptFrame(encryptedFrame,key);
+        System.out.println("Before encryption:");
+        plainText.print();
+        System.out.println("After encryption");
+        encryptedFrame.print();
+        System.out.println("After decryption");
+        decryptedFrame.print();
+    }
 
 }
